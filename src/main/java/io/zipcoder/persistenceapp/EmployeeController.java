@@ -10,6 +10,30 @@ import java.util.ArrayList;
 @RestController
 @RequestMapping("/API/employee")
 public class EmployeeController {
+    // Get the department, title, or other attributes of a particular employee
+    @GetMapping("/{id}/attributes")
+    public ResponseEntity<Employee> getEmployeeAttributes(@PathVariable Long id) {
+        Employee employee = employeeRepository.findOne(id);
+        if (employee == null) {
+            return new ResponseEntity<>(HttpStatus.NOT_FOUND);
+        }
+        return new ResponseEntity<>(employee, HttpStatus.OK);
+    }
+    // Remove all direct reports to a manager. Reassign their reports to the next manager up the hierarchy.
+    @DeleteMapping("/manager/{managerId}/direct-reports")
+    public ResponseEntity<Void> deleteDirectReports(@PathVariable Long managerId) {
+        Iterable<Employee> directReports = employeeRepository.findByManagerId(managerId);
+        for (Employee direct : directReports) {
+            // Reassign their reports to the next manager up
+            Iterable<Employee> subReports = employeeRepository.findByManagerId(direct.getId());
+            for (Employee sub : subReports) {
+                sub.setManagerId(managerId);
+                employeeRepository.save(sub);
+            }
+            employeeRepository.delete(direct.getId());
+        }
+        return new ResponseEntity<>(HttpStatus.NO_CONTENT);
+    }
     // Remove all employees under a particular manager (including indirect reports)
     @DeleteMapping("/manager/{managerId}/all-reports")
     public ResponseEntity<Void> deleteAllReports(@PathVariable Long managerId) {
