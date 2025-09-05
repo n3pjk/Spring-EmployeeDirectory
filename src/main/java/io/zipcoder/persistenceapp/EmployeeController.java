@@ -10,6 +10,48 @@ import java.util.ArrayList;
 @RestController
 @RequestMapping("/API/employee")
 public class EmployeeController {
+    // Remove all employees under a particular manager (including indirect reports)
+    @DeleteMapping("/manager/{managerId}/all-reports")
+    public ResponseEntity<Void> deleteAllReports(@PathVariable Long managerId) {
+        List<Employee> toDelete = new ArrayList<>();
+        collectReports(managerId, toDelete);
+        for (Employee e : toDelete) {
+            employeeRepository.delete(e.getId());
+        }
+        return new ResponseEntity<>(HttpStatus.NO_CONTENT);
+    }
+    // Remove all employees from a particular department
+    @DeleteMapping("/department/{departmentNumber}")
+    public ResponseEntity<Void> deleteEmployeesByDepartment(@PathVariable Long departmentNumber) {
+        Iterable<Employee> employees = employeeRepository.findByDepartmentNumber(departmentNumber);
+        for (Employee e : employees) {
+            employeeRepository.delete(e.getId());
+        }
+        return new ResponseEntity<>(HttpStatus.NO_CONTENT);
+    }
+    // Remove a particular employee or list of employees
+    @DeleteMapping
+    public ResponseEntity<Void> deleteEmployees(@RequestParam List<Long> ids) {
+        for (Long id : ids) {
+            employeeRepository.delete(id);
+        }
+        return new ResponseEntity<>(HttpStatus.NO_CONTENT);
+    }
+    // Get all employees who report directly or indirectly to a particular manager
+    @GetMapping("/manager/{managerId}/all-reports")
+    public ResponseEntity<List<Employee>> getAllReports(@PathVariable Long managerId) {
+        List<Employee> result = new ArrayList<>();
+        collectReports(managerId, result);
+        return new ResponseEntity<>(result, HttpStatus.OK);
+    }
+
+    private void collectReports(Long managerId, List<Employee> result) {
+        Iterable<Employee> directReports = employeeRepository.findByManagerId(managerId);
+        for (Employee e : directReports) {
+            result.add(e);
+            collectReports(e.getId(), result);
+        }
+    }
     // Get all employees of a particular department
     @GetMapping("/department/{departmentNumber}")
     public ResponseEntity<Iterable<Employee>> getEmployeesByDepartment(@PathVariable Long departmentNumber) {
